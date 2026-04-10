@@ -7,7 +7,7 @@ sdk: docker
 pinned: false
 ---
 
-# 📧 Email Triage Environment
+# Email Triage Environment
 
 Ever wished you had an AI assistant to sort through your inbox? That's exactly what this project does.
 
@@ -17,7 +17,7 @@ Built for the OpenEnv spec, which means it plays nicely with any agent framework
 
 ---
 
-## 🤔 What does the agent actually do?
+## What does the agent actually do?
 
 The agent reads an email and makes three decisions:
 
@@ -29,7 +29,7 @@ That's it. Simple decisions, but getting them right consistently is harder than 
 
 ---
 
-## 🎯 Three difficulty levels
+## Three difficulty levels
 
 | Task | What gets graded | Notes |
 |------|-----------------|-------|
@@ -39,7 +39,7 @@ That's it. Simple decisions, but getting them right consistently is harder than 
 
 ---
 
-## 📊 How scoring works
+## How scoring works
 
 The grader gives partial credit, so you don't fail completely for one mistake.
 
@@ -51,7 +51,7 @@ The grader gives partial credit, so you don't fail completely for one mistake.
 
 Priority gets a "near miss" bonus — if the right answer is `high` and you said `medium`, you get 50% credit instead of zero.
 
-### ⚠️ Penalties (Hard mode only)
+### Penalties (Hard mode only)
 
 Some mistakes are worse than others:
 
@@ -62,7 +62,7 @@ Some mistakes are worse than others:
 
 ---
 
-## 🚀 Running it locally
+## Running it locally
 
 **1. Install dependencies**
 ```bash
@@ -96,7 +96,7 @@ You'll see logs like this:
 
 ---
 
-## 🌐 API endpoints
+## API endpoints
 
 The server exposes four endpoints:
 
@@ -133,7 +133,7 @@ Want to explore the API interactively? Go to `/docs` — FastAPI generates a liv
 
 ---
 
-## 📁 Project structure
+## Project structure
 
 ```
 ├── models.py       — all data schemas (email, action, reward, etc.)
@@ -149,7 +149,7 @@ Want to explore the API interactively? Go to `/docs` — FastAPI generates a liv
 
 ---
 
-## 💡 Free API keys
+## Free API keys
 
 No OpenAI account needed. [Groq](https://console.groq.com) offers free API access with fast inference — just sign up and grab a key.
 
