@@ -11,6 +11,7 @@ Endpoints
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from models import (
     ResetRequest,
@@ -43,6 +44,11 @@ app.add_middleware(
 env = EmailTriageEnv()
 
 # ── Endpoints ──────────────────────────────────────────────────────────────
+
+@app.get("/")
+def root():
+    return RedirectResponse(url="/docs")
+
 
 @app.get("/health")
 def health():
