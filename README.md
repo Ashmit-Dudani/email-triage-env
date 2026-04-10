@@ -117,3 +117,4 @@ Returns `{"status": "ok"}`
 | Easy   | Category only                |
 | Medium | Category + Priority          |
 | Hard   | Category + Priority + Action |
+# email-triage-env
