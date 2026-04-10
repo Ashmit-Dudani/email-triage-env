@@ -1,0 +1,140 @@
+# openenv.yaml — OpenEnv Environment Specification
+# Email Triage & Action Environment
+
+name: email-triage-env
+version: "1.0.0"
+description: >
+  A real-world simulation environment where an AI agent manages an inbox.
+  The agent classifies emails, sets priorities, and decides on actions
+  (reply / ignore / escalate) without writing free-text replies,
+  keeping evaluation fully deterministic.
+
+author: "Hackathon Team"
+license: MIT
+
+# ── Environment metadata ────────────────────────────────────────────────────
+
+environment:
+  type: sequential          # one email processed per step
+  episode_length:
+    min: 5
+    max: 10
+  reset_randomizes: true    # email order randomised each episode
+
+# ── Observation schema ──────────────────────────────────────────────────────
+
+observation:
+  type: object
+  fields:
+    email:
+      type: object
+      fields:
+        email_id:    { type: string }
+        subject:     { type: string }
+        body:        { type: string }
+        sender_type: { type: enum, values: [boss, client, promo, unknown] }
+    emails_remaining: { type: integer, min: 0 }
+    episode_id:       { type: string }
+    task:             { type: enum, values: [easy, medium, hard] }
+
+# ── Action schema ───────────────────────────────────────────────────────────
+
+action:
+  type: object
+  fields:
+    category:
+      type: enum
+      values: [work, spam, personal, promo]
+      description: "Email category classification"
+    priority:
+      type: enum
+      values: [high, medium, low]
+      description: "Email priority level"
+    action_type:
+      type: enum
+      values: [reply, ignore, escalate]
+      description: "What to do with this email (no free-text replies)"
+
+# ── Reward schema ───────────────────────────────────────────────────────────
+
+reward:
+  type: object
+  range: [0.0, 1.0]
+  fields:
+    total:          { type: float, range: [0.0, 1.0] }
+    category_score: { type: float, range: [0.0, 1.0] }
+    priority_score:  { type: float, range: [0.0, 1.0] }
+    action_score:   { type: float, range: [0.0, 1.0] }
+    penalty:        { type: float, range: [0.0, 1.0] }
+    explanation:    { type: string }
+
+# ── Tasks ────────────────────────────────────────────────────────────────────
+
+tasks:
+  - id: easy
+    description: "Classify the email category correctly (40% weight)."
+    grading:
+      category_weight: 1.0
+      priority_weight: 0.0
+      action_weight:   0.0
+    partial_credit: true
+
+  - id: medium
+    description: "Classify category AND assign the correct priority."
+    grading:
+      category_weight: 0.57
+      priority_weight: 0.43
+      action_weight:   0.0
+    partial_credit: true   # near-miss priority gets 0.5
+
+  - id: hard
+    description: "Classify category, set priority, AND choose the correct action."
+    grading:
+      category_weight: 0.40
+      priority_weight: 0.30
+      action_weight:   0.30
+    partial_credit: true
+    penalties:
+      - condition: "action_type == 'ignore' AND sender_type == 'boss'"
+        deduction: 0.40
+      - condition: "action_type == 'ignore' AND correct_action == 'escalate'"
+        deduction: 0.30
+
+# ── API endpoints ───────────────────────────────────────────────────────────
+
+api:
+  base_url: "http://localhost:7860"
+  endpoints:
+    reset:
+      method: POST
+      path: /reset
+      body: { task: "easy | medium | hard" }
+    step:
+      method: POST
+      path: /step
+      body: { episode_id: string, action: Action }
+    state:
+      method: GET
+      path: /state
+
+# ── Inference ────────────────────────────────────────────────────────────────
+
+inference:
+  script: inference.py
+  env_vars:
+    - API_BASE_URL
+    - MODEL_NAME
+    - OPENAI_API_KEY
+  log_format:
+    start: "[START] task: <task>"
+    step:  "[STEP] action: <json> reward: <float>"
+    end:   "[END] score: <float>"
+
+# ── Deployment ────────────────────────────────────────────────────────────────
+
+deployment:
+  platform: "Hugging Face Spaces"
+  type: Docker
+  port: 7860
+  dockerfile: Dockerfile
+  command: "uvicorn app:app --host 0.0.0.0 --port 7860"
