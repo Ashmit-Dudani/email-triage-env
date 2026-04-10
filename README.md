@@ -1,13 +1,8 @@
 ---
 title: Email Triage Env
-emoji: 📧
-colorFrom: blue
-colorTo: green
-sdk: docker
-pinned: false
 ---
 
-# 📧 Email Triage OpenEnv
+Email Triage OpenEnv
 
 A real-world simulation environment where an AI agent manages an inbox by
 classifying emails, setting priorities, and choosing actions — with fully
@@ -15,7 +10,7 @@ deterministic grading.
 
 ---
 
-## 📁 File Structure
+File Structure
 
 ```
 email_triage_env/
@@ -33,19 +28,19 @@ email_triage_env/
 
 ---
 
-## 🚀 Run Locally
+Run Locally =>
 
-### 1. Install dependencies
+1. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Start the API server
+2. Start the API server
 ```bash
 python app.py
 ```
 
-### 3. Run the AI agent
+3. Run the AI agent
 ```bash
 export OPENAI_API_KEY="gsk-..."
 export OPENAI_BASE_URL="https://api.groq.com/openai/v1"
@@ -67,14 +62,14 @@ Expected log format:
 
 ---
 
-## 🌐 API Reference
+API Reference =>
 
-### `POST /reset`
+`POST /reset`
 ```json
 { "task": "easy" }
 ```
 
-### `POST /step`
+`POST /step`
 ```json
 {
   "episode_id": "uuid-from-reset",
@@ -86,15 +81,15 @@ Expected log format:
 }
 ```
 
-### `GET /state`
+`GET /state`
 Inspect current episode state.
 
-### `GET /health`
+`GET /health`
 Returns `{"status": "ok"}`
 
 ---
 
-## 📊 Scoring
+Scoring =>
 
 | Component  | Weight (Hard) | Partial credit   |
 |------------|---------------|------------------|
@@ -102,7 +97,7 @@ Returns `{"status": "ok"}`
 | Priority   | 30%           | Near miss → 50%  |
 | Action     | 30%           | Exact only       |
 
-### Penalties
+Penalties
 | Mistake                       | Deduction |
 |-------------------------------|-----------|
 | Ignoring a boss email         | −0.40     |
@@ -110,11 +105,11 @@ Returns `{"status": "ok"}`
 
 ---
 
-## 🎯 Tasks
+Tasks =>
 
 | Task   | What is graded               |
 |--------|------------------------------|
 | Easy   | Category only                |
 | Medium | Category + Priority          |
 | Hard   | Category + Priority + Action |
-# email-triage-env
+email-triage-env
