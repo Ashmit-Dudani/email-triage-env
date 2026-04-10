@@ -57,11 +57,11 @@ def health():
 
 
 @app.post("/reset", response_model=ResetResponse)
-def reset(body: ResetRequest):
+def reset(body: ResetRequest = None):
     """
     Start a new episode.
 
-    Body
+    Body (optional)
     ----
     {
         "task": "easy" | "medium" | "hard"   (default: "easy")
@@ -70,8 +70,11 @@ def reset(body: ResetRequest):
     Returns the first Observation and the episode_id you must
     pass to every /step call.
     """
+    task = "easy"
+    if body is not None and body.task:
+        task = body.task
     try:
-        observation = env.reset(task=body.task)
+        observation = env.reset(task=task)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
