@@ -29,7 +29,7 @@ from openai import OpenAI
 
 # ── Configuration ──────────────────────────────────────────────────────────
 
-API_BASE_URL   = os.environ.get("API_BASE_URL",   "http://localhost:7860")
+API_BASE_URL   = os.environ.get("API_BASE_URL",   "https://mmm17-email-triage-env.hf.space")
 MODEL_NAME     = os.environ.get("MODEL_NAME",     "gpt-4o-mini")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
@@ -152,7 +152,12 @@ def run(task: str):
     # ── [START] ───────────────────────────────────────────────────────────
     print(f"[START] task: {task}")
 
-    observation, episode_id = env_reset(task)
+    try:
+        observation, episode_id = env_reset(task)
+    except Exception as e:
+        print(f"[ERROR] Could not connect to environment: {e}", file=sys.stderr)
+        print(f"[END] score: 0.0")
+        return
 
     total_reward = 0.0
     step_count   = 0
