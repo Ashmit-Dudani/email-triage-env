@@ -199,7 +199,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if not OPENAI_API_KEY:
-        print("[ERROR] OPENAI_API_KEY environment variable is not set.", file=sys.stderr)
-        sys.exit(1)
+        print("[WARN] OPENAI_API_KEY not set — will use fallback actions.", file=sys.stderr)
 
     run(args.task)
