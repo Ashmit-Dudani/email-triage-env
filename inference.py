@@ -186,6 +186,8 @@ def run(task: str):
             break
 
         reward_total = result["reward"]["total"]
+        # Clamp step reward strictly between 0 and 1
+        reward_total = round(min(0.97, max(0.03, float(reward_total))), 4)
         total_reward += reward_total
         step_count   += 1
 
