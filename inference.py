@@ -34,7 +34,7 @@ from openai import OpenAI
 #   API_BASE_URL  -> LLM proxy base url (LiteLLM)
 #   MODEL_NAME    -> model to use
 # ENV_BASE_URL is our own server (HF Space)
-MODEL_NAME    = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+MODEL_NAME    = os.environ.get("MODEL_NAME") or os.environ.get("MODEL", "gpt-4o-mini")
 API_KEY       = os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY", "dummy")
 LLM_BASE_URL  = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
 ENV_BASE_URL  = os.environ.get("ENV_BASE_URL", "https://mmm17-email-triage-env.hf.space")
@@ -178,7 +178,11 @@ def run(task: str):
             action = {"category": "work", "priority": "medium", "action_type": "reply"}
 
         # 2. Submit action to environment
-        result = env_step(episode_id, action)
+        try:
+            result = env_step(episode_id, action)
+        except Exception as e:
+            print(f"[ERROR] env_step failed: {e}", file=sys.stderr)
+            break
 
         reward_total = result["reward"]["total"]
         total_reward += reward_total
@@ -212,4 +216,9 @@ if __name__ == "__main__":
     if not API_KEY or API_KEY == "dummy":
         print("[WARN] API_KEY not set — will use fallback actions.", file=sys.stderr)
 
-    run(args.task)
+    try:
+        run(args.task)
+    except Exception as e:
+        print(f"[ERROR] Unhandled exception: {e}", file=sys.stderr)
+        print("[END] score: 0.0")
+        sys.exit(0)
