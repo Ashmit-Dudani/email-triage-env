@@ -1,43 +1,46 @@
-# openenv.yaml — OpenEnv Environment Specification
-# Email Triage & Action Environment
-
 name: email-triage-env
 version: "1.0.0"
-description: >
-  A real-world simulation environment where an AI agent manages an inbox.
-  The agent classifies emails, sets priorities, and decides on actions
-  (reply / ignore / escalate) without writing free-text replies,
-  keeping evaluation fully deterministic.
+description: "Email Triage environment where an AI agent classifies emails, sets priorities, and decides actions."
 
-author: "Hackathon Team"
-license: MIT
+tasks:
+  - id: easy
+    name: "Email Category Classification"
+    description: "Classify the email into the correct category: work, spam, personal, or promo."
+    grader:
+      type: deterministic
+      score_range: [0.0, 1.0]
+      partial_credit: true
+    metric: category_score
 
-# ── Environment metadata ────────────────────────────────────────────────────
+  - id: medium
+    name: "Email Priority Assignment"
+    description: "Classify category AND assign the correct priority level: high, medium, or low."
+    grader:
+      type: deterministic
+      score_range: [0.0, 1.0]
+      partial_credit: true
+    metric: total
 
-environment:
-  type: sequential          # one email processed per step
-  episode_length:
-    min: 5
-    max: 10
-  reset_randomizes: true    # email order randomised each episode
-
-# ── Observation schema ──────────────────────────────────────────────────────
+  - id: hard
+    name: "Email Action Decision"
+    description: "Classify category, set priority, AND decide the correct action: reply, ignore, or escalate."
+    grader:
+      type: deterministic
+      score_range: [0.0, 1.0]
+      partial_credit: true
+      penalties: true
+    metric: total
 
 observation:
   type: object
   fields:
-    email:
-      type: object
-      fields:
-        email_id:    { type: string }
-        subject:     { type: string }
-        body:        { type: string }
-        sender_type: { type: enum, values: [boss, client, promo, unknown] }
-    emails_remaining: { type: integer, min: 0 }
-    episode_id:       { type: string }
-    task:             { type: enum, values: [easy, medium, hard] }
-
-# ── Action schema ───────────────────────────────────────────────────────────
+    email_id: string
+    subject: string
+    body: string
+    sender_type: string
+    emails_remaining: integer
+    episode_id: string
+    task: string
 
 action:
   type: object
@@ -45,96 +48,41 @@ action:
     category:
       type: enum
       values: [work, spam, personal, promo]
-      description: "Email category classification"
     priority:
       type: enum
       values: [high, medium, low]
-      description: "Email priority level"
     action_type:
       type: enum
       values: [reply, ignore, escalate]
-      description: "What to do with this email (no free-text replies)"
-
-# ── Reward schema ───────────────────────────────────────────────────────────
 
 reward:
-  type: object
+  type: float
   range: [0.0, 1.0]
-  fields:
-    total:          { type: float, range: [0.0, 1.0] }
-    category_score: { type: float, range: [0.0, 1.0] }
-    priority_score:  { type: float, range: [0.0, 1.0] }
-    action_score:   { type: float, range: [0.0, 1.0] }
-    penalty:        { type: float, range: [0.0, 1.0] }
-    explanation:    { type: string }
-
-# ── Tasks ────────────────────────────────────────────────────────────────────
-
-tasks:
-  - id: easy
-    description: "Classify the email category correctly (40% weight)."
-    grading:
-      category_weight: 1.0
-      priority_weight: 0.0
-      action_weight:   0.0
-    partial_credit: true
-
-  - id: medium
-    description: "Classify category AND assign the correct priority."
-    grading:
-      category_weight: 0.57
-      priority_weight: 0.43
-      action_weight:   0.0
-    partial_credit: true   # near-miss priority gets 0.5
-
-  - id: hard
-    description: "Classify category, set priority, AND choose the correct action."
-    grading:
-      category_weight: 0.40
-      priority_weight: 0.30
-      action_weight:   0.30
-    partial_credit: true
-    penalties:
-      - condition: "action_type == 'ignore' AND sender_type == 'boss'"
-        deduction: 0.40
-      - condition: "action_type == 'ignore' AND correct_action == 'escalate'"
-        deduction: 0.30
-
-# ── API endpoints ───────────────────────────────────────────────────────────
 
 api:
-  base_url: "http://localhost:7860"
-  endpoints:
-    reset:
-      method: POST
-      path: /reset
-      body: { task: "easy | medium | hard" }
-    step:
-      method: POST
-      path: /step
-      body: { episode_id: string, action: Action }
-    state:
-      method: GET
-      path: /state
-
-# ── Inference ────────────────────────────────────────────────────────────────
+  reset:
+    method: POST
+    path: /reset
+  step:
+    method: POST
+    path: /step
+  state:
+    method: GET
+    path: /state
 
 inference:
   script: inference.py
   env_vars:
+    - API_KEY
     - API_BASE_URL
     - MODEL_NAME
-    - OPENAI_API_KEY
+    - ENV_BASE_URL
   log_format:
-    start: "[START] task: <task>"
-    step:  "[STEP] action: <json> reward: <float>"
-    end:   "[END] score: <float>"
-
-# ── Deployment ────────────────────────────────────────────────────────────────
+    start: "[START] task: {task}"
+    step: "[STEP] action: {action} reward: {reward}"
+    end: "[END] score: {score}"
 
 deployment:
   platform: "Hugging Face Spaces"
   type: Docker
   port: 7860
-  dockerfile: Dockerfile
-  command: "uvicorn app:app --host 0.0.0.0 --port 7860"
