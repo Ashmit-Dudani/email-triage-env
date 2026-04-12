@@ -60,15 +60,15 @@ class Action(BaseModel):
 class Reward(BaseModel):
     """OpenEnv-spec reward with partial credit breakdown."""
 
-    total: float = Field(..., gt=0.0, lt=1.0, description="Overall step score (0.0–1.0)")
+    total: float = Field(..., ge=0.0, le=1.0, description="Overall step score (0.0–1.0)")
 
     # Sub-scores (each 0.0–1.0 before weighting)
-    category_score: float = Field(..., gt=0.0, lt=1.0, description="Classification accuracy")
-    priority_score: float = Field(..., gt=0.0, lt=1.0, description="Priority accuracy")
-    action_score: float = Field(..., gt=0.0, lt=1.0, description="Action-type accuracy")
+    category_score: float = Field(..., ge=0.0, le=1.0, description="Classification accuracy")
+    priority_score: float = Field(..., ge=0.0, le=1.0, description="Priority accuracy")
+    action_score: float = Field(..., ge=0.0, le=1.0, description="Action-type accuracy")
 
     penalty: float = Field(
-        default=0.0, gt=0.0, lt=1.0,
+        default=0.0, ge=0.0, le=1.0,
         description="Penalty applied for critical mistakes (e.g. ignoring boss email)"
     )
     explanation: str = Field(..., description="Human-readable grader explanation")
