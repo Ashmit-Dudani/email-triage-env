@@ -198,9 +198,13 @@ def run(task: str):
             observation = result["observation"]
 
     # ── [END] ─────────────────────────────────────────────────────────────
-    raw_score = round(total_reward / step_count, 4) if step_count > 0 else 0.5
-    # Score must be strictly between 0 and 1
-    final_score = round(min(0.99, max(0.01, raw_score)), 4)
+    raw_score = (total_reward / step_count) if step_count > 0 else 0.5
+    # Score must be strictly between 0 and 1 — nudge away from exact boundaries
+    if raw_score <= 0.0:
+        raw_score = 0.05
+    elif raw_score >= 1.0:
+        raw_score = 0.95
+    final_score = round(raw_score, 4)
     print(f"[END] score: {final_score}")
 
 

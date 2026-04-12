@@ -17,29 +17,36 @@ PRIORITY_NEAR_MISS = {
     ("medium", "low"),  ("low", "medium"),
 }
 
+import random
+
 SCORE_CORRECT   = 0.95
 SCORE_NEAR_MISS = 0.50
 SCORE_WRONG     = 0.05
 
+def _jitter(v):
+    """Add tiny noise so score is never exactly 0 or 1."""
+    noise = random.uniform(-0.02, 0.02)
+    return round(min(0.97, max(0.03, v + noise)), 4)
+
 
 def _score_category(predicted, correct):
     if predicted == correct:
-        return SCORE_CORRECT, f"Category correct ({correct})"
-    return SCORE_WRONG, f"Category wrong: got '{predicted}', expected '{correct}'"
+        return _jitter(SCORE_CORRECT), f"Category correct ({correct})"
+    return _jitter(SCORE_WRONG), f"Category wrong: got '{predicted}', expected '{correct}'"
 
 
 def _score_priority(predicted, correct):
     if predicted == correct:
-        return SCORE_CORRECT, f"Priority correct ({correct})"
+        return _jitter(SCORE_CORRECT), f"Priority correct ({correct})"
     if (predicted, correct) in PRIORITY_NEAR_MISS:
-        return SCORE_NEAR_MISS, f"Priority near miss: got '{predicted}', expected '{correct}'"
-    return SCORE_WRONG, f"Priority wrong: got '{predicted}', expected '{correct}'"
+        return _jitter(SCORE_NEAR_MISS), f"Priority near miss: got '{predicted}', expected '{correct}'"
+    return _jitter(SCORE_WRONG), f"Priority wrong: got '{predicted}', expected '{correct}'"
 
 
 def _score_action(predicted, correct):
     if predicted == correct:
-        return SCORE_CORRECT, f"Action correct ({correct})"
-    return SCORE_WRONG, f"Action wrong: got '{predicted}', expected '{correct}'"
+        return _jitter(SCORE_CORRECT), f"Action correct ({correct})"
+    return _jitter(SCORE_WRONG), f"Action wrong: got '{predicted}', expected '{correct}'"
 
 
 def _compute_penalty(action, email_sender, correct_action):
