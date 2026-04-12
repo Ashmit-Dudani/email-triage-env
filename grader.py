@@ -19,9 +19,9 @@ PRIORITY_NEAR_MISS = {
 
 import random
 
-SCORE_CORRECT   = 0.95
+SCORE_CORRECT   = 0.85
 SCORE_NEAR_MISS = 0.50
-SCORE_WRONG     = 0.05
+SCORE_WRONG     = 0.15
 
 def _jitter(v):
     """Add tiny noise so score is never exactly 0 or 1."""
