@@ -129,11 +129,15 @@ def grade(email_id: str, action: Action, task: str, sender_type: str) -> Reward:
         parts.append(penalty_msg)
     explanation = " | ".join(p for p in parts if p)
 
+    # Scores must be strictly between 0 and 1 (not 0.0, not 1.0)
+    def clamp(v):
+        return round(min(0.99, max(0.01, v)), 4)
+
     return Reward(
-        total=total,
-        category_score=cat_score,
-        priority_score=pri_score,
-        action_score=act_score,
-        penalty=penalty,
+        total=clamp(total),
+        category_score=clamp(cat_score),
+        priority_score=clamp(pri_score),
+        action_score=clamp(act_score),
+        penalty=round(penalty, 4),
         explanation=explanation,
     )
