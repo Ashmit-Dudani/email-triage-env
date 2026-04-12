@@ -1,98 +1,77 @@
 """
-grader.py - Deterministic grader for Email Triage actions.
+grader.py - Deterministic grader. All scores strictly between 0 and 1.
 
-All scores are strictly between 0.0 and 1.0 (exclusive).
-Exact match gives 0.95, wrong gives 0.05, near miss gives 0.50.
+Correct answer  → 0.9
+Near miss       → 0.5  (priority only)
+Wrong answer    → 0.1
+
+Final score clamped to [0.1, 0.9] — never 0.0 or 1.0.
 """
 
 from models import Action, Reward
 from data import GROUND_TRUTH
 
-WEIGHT_CATEGORY = 0.40
-WEIGHT_PRIORITY = 0.30
-WEIGHT_ACTION   = 0.30
-
-PRIORITY_NEAR_MISS = {
+NEAR_MISS = {
     ("high", "medium"), ("medium", "high"),
     ("medium", "low"),  ("low", "medium"),
 }
 
-import random
+def _cat(pred, correct):
+    return (0.9, f"category correct ({correct})") if pred == correct \
+        else (0.1, f"category wrong: {pred} != {correct}")
 
-SCORE_CORRECT   = 0.85
-SCORE_NEAR_MISS = 0.50
-SCORE_WRONG     = 0.15
+def _pri(pred, correct):
+    if pred == correct:
+        return 0.9, f"priority correct ({correct})"
+    if (pred, correct) in NEAR_MISS:
+        return 0.5, f"priority near miss: {pred} vs {correct}"
+    return 0.1, f"priority wrong: {pred} != {correct}"
 
-def _jitter(v):
-    """Add tiny noise so score is never exactly 0 or 1."""
-    noise = random.uniform(-0.02, 0.02)
-    return round(min(0.97, max(0.03, v + noise)), 4)
+def _act(pred, correct):
+    return (0.9, f"action correct ({correct})") if pred == correct \
+        else (0.1, f"action wrong: {pred} != {correct}")
 
-
-def _score_category(predicted, correct):
-    if predicted == correct:
-        return _jitter(SCORE_CORRECT), f"Category correct ({correct})"
-    return _jitter(SCORE_WRONG), f"Category wrong: got '{predicted}', expected '{correct}'"
-
-
-def _score_priority(predicted, correct):
-    if predicted == correct:
-        return _jitter(SCORE_CORRECT), f"Priority correct ({correct})"
-    if (predicted, correct) in PRIORITY_NEAR_MISS:
-        return _jitter(SCORE_NEAR_MISS), f"Priority near miss: got '{predicted}', expected '{correct}'"
-    return _jitter(SCORE_WRONG), f"Priority wrong: got '{predicted}', expected '{correct}'"
-
-
-def _score_action(predicted, correct):
-    if predicted == correct:
-        return _jitter(SCORE_CORRECT), f"Action correct ({correct})"
-    return _jitter(SCORE_WRONG), f"Action wrong: got '{predicted}', expected '{correct}'"
-
-
-def _compute_penalty(action, email_sender, correct_action):
-    if action.action_type == "ignore" and email_sender == "boss":
-        return 0.20, "PENALTY: ignored a boss email"
-    if action.action_type == "ignore" and correct_action == "escalate":
-        return 0.15, "PENALTY: ignored an escalation-needed email"
-    return 0.0, ""
-
-
-def grade(email_id, action, task, sender_type):
+def grade(email_id: str, action: Action, task: str, sender_type: str) -> Reward:
     truth = GROUND_TRUTH[email_id]
-    correct_category = truth["category"]
-    correct_priority = truth["priority"]
-    correct_action   = truth["action_type"]
-
-    cat_score, cat_msg = _score_category(action.category,  correct_category)
-    pri_score, pri_msg = _score_priority(action.priority,  correct_priority)
-    act_score, act_msg = _score_action(action.action_type, correct_action)
+    cat_s, cat_m = _cat(action.category,    truth["category"])
+    pri_s, pri_m = _pri(action.priority,    truth["priority"])
+    act_s, act_m = _act(action.action_type, truth["action_type"])
 
     if task == "easy":
-        raw = cat_score
-        pri_score = SCORE_WRONG
-        act_score = SCORE_WRONG
+        raw = cat_s
+        pri_s = act_s = 0.1
     elif task == "medium":
-        raw = (cat_score * 0.57) + (pri_score * 0.43)
-        act_score = SCORE_WRONG
+        raw   = cat_s * 0.57 + pri_s * 0.43
+        act_s = 0.1
     else:
-        raw = (cat_score * WEIGHT_CATEGORY
-               + pri_score * WEIGHT_PRIORITY
-               + act_score * WEIGHT_ACTION)
+        raw = cat_s * 0.40 + pri_s * 0.30 + act_s * 0.30
 
-    penalty, penalty_msg = _compute_penalty(action, sender_type, correct_action)
+    # Penalties — kept small so total stays in range
+    penalty = 0.0
+    pen_msg = ""
+    if action.action_type == "ignore" and sender_type == "boss":
+        penalty = 0.15
+        pen_msg = "penalty: ignored boss email"
+    elif action.action_type == "ignore" and truth["action_type"] == "escalate":
+        penalty = 0.10
+        pen_msg = "penalty: should have escalated"
 
-    total = round(min(0.97, max(0.03, raw - penalty)), 4)
+    total = raw - penalty
+    # Hard clamp — never 0.0 or 1.0
+    total = round(max(0.1, min(0.9, total)), 4)
+    cat_s = round(max(0.1, min(0.9, cat_s)), 4)
+    pri_s = round(max(0.1, min(0.9, pri_s)), 4)
+    act_s = round(max(0.1, min(0.9, act_s)), 4)
 
-    parts = [cat_msg, pri_msg, act_msg]
-    if penalty_msg:
-        parts.append(penalty_msg)
-    explanation = " | ".join(p for p in parts if p)
+    msgs = [cat_m, pri_m, act_m]
+    if pen_msg:
+        msgs.append(pen_msg)
 
     return Reward(
         total=total,
-        category_score=round(cat_score, 4),
-        priority_score=round(pri_score, 4),
-        action_score=round(act_score, 4),
+        category_score=cat_s,
+        priority_score=pri_s,
+        action_score=act_s,
         penalty=round(penalty, 4),
-        explanation=explanation,
+        explanation=" | ".join(msgs),
     )
