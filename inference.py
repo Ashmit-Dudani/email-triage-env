@@ -31,13 +31,16 @@ from openai import OpenAI
 
 API_BASE_URL   = os.environ.get("API_BASE_URL",   "https://mmm17-email-triage-env.hf.space")
 MODEL_NAME     = os.environ.get("MODEL_NAME",     "gpt-4o-mini")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+
+# Checker injects API_KEY and API_BASE_URL — support both naming conventions
+OPENAI_API_KEY = os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
 
 # ── OpenAI client ──────────────────────────────────────────────────────────
 
 client = OpenAI(
     api_key=OPENAI_API_KEY,
-    base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+    base_url=OPENAI_BASE_URL,
 )
 
 # ── System prompt for the agent ────────────────────────────────────────────
