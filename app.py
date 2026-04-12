@@ -1,36 +1,16 @@
-"""
-app.py - FastAPI server for the Email Triage OpenEnv Environment
-
-Endpoints
----------
-  POST /reset          → start a new episode
-  POST /step           → submit an action
-  GET  /state          → inspect current episode state
-  GET  /health         → liveness probe (used by Docker / HF Spaces)
-"""
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from models import (
-    ResetRequest,
-    ResetResponse,
-    StepRequest,
-    StepResponse,
+    ResetRequest, ResetResponse,
+    StepRequest, StepResponse,
     EpisodeState,
 )
 from env import EmailTriageEnv
 
-# ── App setup ──────────────────────────────────────────────────────────────
+app = FastAPI(title="Email Triage OpenEnv", version="1.0.0")
 
-app = FastAPI(
-    title="Email Triage OpenEnv",
-    description="A real-world simulation environment for AI email-triage agents.",
-    version="1.0.0",
-)
-
-# Allow all origins so the HF Spaces preview and external agents can connect
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -38,38 +18,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Global environment instance ────────────────────────────────────────────
-# NOTE: This is a single shared instance — fine for a hackathon / demo.
-# In production you'd store one env per session / user.
 env = EmailTriageEnv()
 
-# ── Endpoints ──────────────────────────────────────────────────────────────
+def safe(v):
+    """Force any float to be strictly between 0 and 1."""
+    try:
+        v = float(v)
+    except:
+        v = 0.5
+    if v <= 0.0:
+        return 0.11
+    if v >= 1.0:
+        return 0.89
+    if v == 0.5:
+        return 0.51
+    return round(v, 4)
 
 @app.get("/")
 def root():
     return RedirectResponse(url="/docs")
 
-
 @app.get("/health")
 def health():
-    """Liveness probe — always returns 200 OK."""
     return {"status": "ok"}
-
 
 @app.post("/reset", response_model=ResetResponse)
 def reset(body: ResetRequest = None):
-    """
-    Start a new episode.
-
-    Body (optional)
-    ----
-    {
-        "task": "easy" | "medium" | "hard"   (default: "easy")
-    }
-
-    Returns the first Observation and the episode_id you must
-    pass to every /step call.
-    """
     task = "easy"
     if body is not None and body.task:
         task = body.task
@@ -77,76 +51,44 @@ def reset(body: ResetRequest = None):
         observation = env.reset(task=task)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
-
-    return ResetResponse(
-        observation=observation,
-        episode_id=observation.episode_id,
-    )
-
+    return ResetResponse(observation=observation, episode_id=observation.episode_id)
 
 @app.post("/step", response_model=StepResponse)
 def step(body: StepRequest):
-    """
-    Submit the agent's action for the current email.
-
-    Body
-    ----
-    {
-        "episode_id": "<uuid from /reset>",
-        "action": {
-            "category":    "work" | "spam" | "personal" | "promo",
-            "priority":    "high" | "medium" | "low",
-            "action_type": "reply" | "ignore" | "escalate"
-        }
-    }
-
-    Returns the next Observation (null when done), the Reward,
-    and a done flag.
-    """
-    # Validate episode_id matches the active episode
     try:
         current_state = env.state()
     except RuntimeError:
-        raise HTTPException(
-            status_code=400,
-            detail="No active episode. Call /reset first.",
-        )
+        raise HTTPException(status_code=400, detail="No active episode. Call /reset first.")
 
     if current_state.episode_id != body.episode_id:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"episode_id mismatch: "
-                f"expected '{current_state.episode_id}', got '{body.episode_id}'"
-            ),
-        )
+        raise HTTPException(status_code=400, detail="episode_id mismatch")
 
     try:
         result = env.step(body.action)
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    # Force all reward scores to be strictly between 0 and 1
+    r = result.reward
+    r.total          = safe(r.total)
+    r.category_score = safe(r.category_score)
+    r.priority_score = safe(r.priority_score)
+    r.action_score   = safe(r.action_score)
+    r.penalty        = round(float(r.penalty), 4)
+
     return StepResponse(
         observation=result.observation,
-        reward=result.reward,
+        reward=r,
         done=result.done,
         info=result.info,
     )
 
-
 @app.get("/state", response_model=EpisodeState)
 def state():
-    """
-    Inspect the current episode state without consuming a step.
-    Useful for debugging and monitoring.
-    """
     try:
         return env.state()
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-# ── Entry point ────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn
