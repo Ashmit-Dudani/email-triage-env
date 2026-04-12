@@ -29,18 +29,21 @@ from openai import OpenAI
 
 # ── Configuration ──────────────────────────────────────────────────────────
 
-API_BASE_URL   = os.environ.get("API_BASE_URL",   "https://mmm17-email-triage-env.hf.space")
-MODEL_NAME     = os.environ.get("MODEL_NAME",     "gpt-4o-mini")
-
-# Checker injects API_KEY and API_BASE_URL — support both naming conventions
-OPENAI_API_KEY = os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY", "")
-OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+# The checker injects these exact variable names:
+#   API_KEY       -> LLM api key
+#   API_BASE_URL  -> LLM proxy base url (LiteLLM)
+#   MODEL_NAME    -> model to use
+# ENV_BASE_URL is our own server (HF Space)
+MODEL_NAME    = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+API_KEY       = os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY", "dummy")
+LLM_BASE_URL  = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
+ENV_BASE_URL  = os.environ.get("ENV_BASE_URL", "https://mmm17-email-triage-env.hf.space")
 
 # ── OpenAI client ──────────────────────────────────────────────────────────
 
 client = OpenAI(
-    api_key=OPENAI_API_KEY,
-    base_url=OPENAI_BASE_URL,
+    api_key=API_KEY,
+    base_url=LLM_BASE_URL,
 )
 
 # ── System prompt for the agent ────────────────────────────────────────────
@@ -129,7 +132,7 @@ def ask_agent(observation: dict) -> dict:
 def env_reset(task: str) -> tuple[dict, str]:
     """Call POST /reset and return (observation, episode_id)."""
     r = requests.post(
-        f"{API_BASE_URL}/reset",
+        f"{ENV_BASE_URL}/reset",
         json={"task": task},
         timeout=30,
     )
@@ -141,7 +144,7 @@ def env_reset(task: str) -> tuple[dict, str]:
 def env_step(episode_id: str, action: dict) -> dict:
     """Call POST /step and return the full response dict."""
     r = requests.post(
-        f"{API_BASE_URL}/step",
+        f"{ENV_BASE_URL}/step",
         json={"episode_id": episode_id, "action": action},
         timeout=30,
     )
@@ -206,7 +209,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if not OPENAI_API_KEY:
-        print("[WARN] OPENAI_API_KEY not set — will use fallback actions.", file=sys.stderr)
+    if not API_KEY or API_KEY == "dummy":
+        print("[WARN] API_KEY not set — will use fallback actions.", file=sys.stderr)
 
     run(args.task)
